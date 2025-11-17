@@ -512,7 +512,7 @@ def conv_forward_naive(x, w, b, conv_param):
     # TODO: Implement the convolutional forward pass.                         #
     # Hint: you can use the function np.pad for padding.                      #
     ###########################################################################
-    pad_width = ((0,0),(0,0),(1,1),(1,1))
+    pad_width = ((0,0),(0,0),(conv_param['pad'],conv_param['pad']),(conv_param['pad'],conv_param['pad']))
     x_pad = np.pad(x, pad_width, mode='constant')
     
     x_pad_height, x_pad_width = x_pad.shape[2], x_pad.shape[3]
@@ -521,27 +521,20 @@ def conv_forward_naive(x, w, b, conv_param):
     W_prime = int(1 + (x.shape[3]+2*conv_param['pad']-w_width) / conv_param['stride'])
 
     out = np.zeros((x.shape[0], w.shape[0], H_prime, W_prime))
-    print(out.shape)
-
-    for i in range(0, (x_pad_height-w_height+1)):
-        start = i * conv_param['stride']
+    w_flat = w.reshape(w.shape[0], -1)
+    
+    for i in range(0, H_prime):
+        start_height = i * conv_param['stride']
+        end_height = i * conv_param['stride'] + w_height
         
-        if w_height == w_width:
-            end = i * conv_param['stride'] + w_height
-        else:
-            pass
-        
-        x_pad_chunck = x_pad[:, :, start:end, start:end].reshape(x_pad.shape[0], -1)
-        w_flatten = w.reshape(w.shape[0], -1)
-        
-        out_prime = (x_pad_chunck @ w_flatten.T).reshape(x.shape[0], w.shape[0], 1, 1)
-        print(out_prime.shape)
+        for j in range(0, W_prime):
+            start_width = j * conv_param['stride']
+            end_width = j * conv_param['stride'] + w_width
 
-        if end == x_pad_height:
-            break
-
-        print(out)    
-
+            x_pad_chunck = x_pad[:, :, start_height:end_height, start_width:end_width].reshape(x_pad.shape[0], -1)            
+            out_prime = (x_pad_chunck @ w_flat.T).reshape(x.shape[0], w.shape[0], 1, 1)
+            out[:, :, i, j] = out_prime[:, :, 0, 0]
+    out += b.reshape(1, b.shape[0], 1, 1)
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
