@@ -61,7 +61,19 @@ class ThreeLayerConvNet(object):
         # **the width and height of the input are preserved**. Take a look at      #
         # the start of the loss() function to see how that happens.                #
         ############################################################################
-        # 
+        F = num_filters
+        C, H, W = input_dim
+
+        self.params = {
+            'W1': np.random.randn(F, C, filter_size, filter_size) * weight_scale,
+            'b1': np.zeros((num_filters)),
+
+            'W2': np.random.randn(F*H*W//4, hidden_dim) * weight_scale,
+            'b2': np.zeros((hidden_dim)),
+
+            'W3': np.random.randn(hidden_dim, num_classes) * weight_scale,
+            'b3': np.zeros((num_classes))
+        }
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -96,7 +108,9 @@ class ThreeLayerConvNet(object):
         # Remember you can use the functions defined in cs231n/fast_layers.py and  #
         # cs231n/layer_utils.py in your implementation (already imported).         #
         ############################################################################
-        # 
+        out, cache1 = conv_relu_pool_forward(X, W1, b1, conv_param, pool_param)  # cache = (conv_cache, relu_cache, pool_cache)
+        out, cache2 = affine_relu_forward(out, W2, b2)  # cache = (fc_cache, relu_cache)
+        scores, cache3 = affine_forward(out, W3, b3)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -115,7 +129,21 @@ class ThreeLayerConvNet(object):
         # automated tests, make sure that your L2 regularization includes a factor #
         # of 0.5 to simplify the expression for the gradient.                      #
         ############################################################################
-        # 
+        loss, dx = softmax_loss(scores, y)
+        loss += 0.5 * self.reg * (np.sum(W1**2) + np.sum(W2**2) + np.sum(W3**2))
+        
+        dx, dw, db = affine_backward(dx, cache3)
+        grads['W3'] = dw + self.reg * self.params['W3']
+        grads['b3'] = db
+
+        dx, dw, db = affine_relu_backward(dx, cache2)
+        grads['W2'] = dw + self.reg * self.params['W2']
+        grads['b2'] = db
+
+        dx, dw, db = conv_relu_pool_backward(dx, cache1)
+        grads['W1'] = dw + self.reg * self.params['W1']
+        grads['b1'] = db
+
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
